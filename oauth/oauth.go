@@ -2,8 +2,9 @@ package oauth
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/IkezawaYuki/videostore_oauth-go/oauth/errors"
+	"github.com/IkezawaYuki/videostore_utils-go/rest_errors"
 	"github.com/mercadolibre/golang-restclient/rest"
 	"net/http"
 	"strconv"
@@ -60,7 +61,7 @@ func GetClientID(request *http.Request) int64 {
 	return clientID
 }
 
-func AuthenticateRequest(request *http.Request) *errors.RestErr {
+func AuthenticateRequest(request *http.Request) *rest_errors.RestErr {
 	if request == nil {
 		return nil
 	}
@@ -92,22 +93,22 @@ func cleanRequest(request *http.Request) {
 	request.Header.Del(headerXCallerID)
 }
 
-func getAccessToken(accessTokenID string) (*accessToken, *errors.RestErr) {
+func getAccessToken(accessTokenID string) (*accessToken, *rest_errors.RestErr) {
 	response := oauthRestClient.Get(fmt.Sprintf("/oauth/access_token/%s", accessTokenID))
 	if response == nil || response.Response == nil {
-		return nil, errors.NewInternalServerErr("invalid restclient response when trying to get access token")
+		return nil, rest_errors.NewInternalServerError("invalid restclient response when trying to get access token", errors.New("api error"))
 	}
 	if response.StatusCode > 299 {
-		var restErr errors.RestErr
+		var restErr rest_errors.RestErr
 		err := json.Unmarshal(response.Bytes(), &restErr)
 		if err != nil {
-			return nil, errors.NewInternalServerErr("invalid error interface when trying to get access token")
+			return nil, rest_errors.NewInternalServerError("invalid error interface when trying to get access token", errors.New("api error"))
 		}
 		return nil, &restErr
 	}
 	var at accessToken
 	if err := json.Unmarshal(response.Bytes(), &at); err != nil {
-		return nil, errors.NewInternalServerErr("error when trying to unmarshal access token response")
+		return nil, rest_errors.NewInternalServerError("error when trying to unmarshal access token response", errors.New("api error"))
 	}
 	return &at, nil
 }
