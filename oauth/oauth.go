@@ -14,8 +14,8 @@ import (
 
 const (
 	headerXPublic    = "X-Public"
-	headerXClientID  = "X-Client-ID" // check!
-	headerXCallerID  = "X-Caller-ID" // check!
+	headerXClientID  = "X-Client-ID"
+	headerXCallerID  = "X-Caller-ID"
 	paramAccessToken = "access_token"
 )
 
@@ -100,6 +100,8 @@ func getAccessToken(accessTokenID string) (*accessToken, rest_errors.RestErr) {
 	}
 	if response.StatusCode > 299 {
 		var restErr rest_errors.RestErr
+		fmt.Println(response)
+		fmt.Println(response.Body)
 		err := json.Unmarshal(response.Bytes(), &restErr)
 		if err != nil {
 			return nil, rest_errors.NewInternalServerError("invalid error interface when trying to get access token", errors.New("api error"))
