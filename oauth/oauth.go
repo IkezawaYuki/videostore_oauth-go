@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/IkezawaYuki/videostore_utils-go/rest_errors"
-	"github.com/mercadolibre/golang-restclient/rest"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
+
+	"github.com/IkezawaYuki/videostore_utils-go/rest_errors"
 )
 
 const (
@@ -20,10 +20,11 @@ const (
 )
 
 var (
-	oauthRestClient = rest.RequestBuilder{
-		BaseURL: "http://localhost:8080",
-		Timeout: 200 * time.Millisecond,
-	}
+	// oauthRestClient = rest.RequestBuilder{
+	// 	BaseURL: "http://localhost:8080",
+	// 	Timeout: 200 * time.Millisecond,
+	// }
+	httpClient = &http.Client{}
 )
 
 type accessToken struct {
@@ -94,22 +95,33 @@ func cleanRequest(request *http.Request) {
 }
 
 func getAccessToken(accessTokenID string) (*accessToken, rest_errors.RestErr) {
-	response := oauthRestClient.Get(fmt.Sprintf("/oauth/access_token/%s", accessTokenID))
-	if response == nil || response.Response == nil {
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://localhost:8080/oauth/access_token/%s", accessTokenID), nil)
+	if err != nil {
 		return nil, rest_errors.NewInternalServerError("invalid restclient response when trying to get access token", errors.New("api error"))
+	}
+
+	response, err := httpClient.Do(req)
+	if err != nil {
+		return nil, rest_errors.NewInternalServerError("invalid restclient response when trying to get access token", errors.New("api error"))
+	}
+	// response := oauthRestClient.Get(fmt.Sprintf("/oauth/access_token/%s", accessTokenID))
+	// if response == nil || response.Response == nil {
+	// 	return nil, rest_errors.NewInternalServerError("invalid restclient response when trying to get access token", errors.New("api error"))
+	// }
+	byte, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, rest_errors.NewInternalServerError("invalid error interface when trying to get access token", errors.New("api error"))
 	}
 	if response.StatusCode > 299 {
 		var restErr rest_errors.RestErr
-		fmt.Println(response)
-		fmt.Println(response.Body)
-		err := json.Unmarshal(response.Bytes(), &restErr)
+		err = json.Unmarshal(byte, &restErr)
 		if err != nil {
 			return nil, rest_errors.NewInternalServerError("invalid error interface when trying to get access token", errors.New("api error"))
 		}
 		return nil, restErr
 	}
 	var at accessToken
-	if err := json.Unmarshal(response.Bytes(), &at); err != nil {
+	if err := json.Unmarshal(byte, &at); err != nil {
 		return nil, rest_errors.NewInternalServerError("error when trying to unmarshal access token response", errors.New("api error"))
 	}
 	return &at, nil
